@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "otus-advanced-basics"
+version = "0.1.0"
+description = ""
+authors = ["Alexandr Alferov <alferov960@gmail.com>"]
+readme = "README.md"
+packages = [{include = "otus_advanced_basics"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+ruff = "^0.0.272"
+black = "^23.3.0"
+jupyter = "^1.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+select = ["E", "F", "I"]
+line-length = 120
+target-version = "py310"
+
+[tool.black]
+line-length = 120
