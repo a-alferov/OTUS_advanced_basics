@@ -8,9 +8,8 @@ packages = [{include = "otus_advanced_basics"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-ruff = "^0.0.272"
-black = "^23.3.0"
 jupyter = "^1.0.0"
+ruff = "^0.2.1"
 
 
 [build-system]
@@ -18,9 +17,41 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-select = ["E", "F", "I"]
 line-length = 120
-target-version = "py310"
 
-[tool.black]
-line-length = 120
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+length-sort-straight = true
+order-by-type = true
+
+[tool.ruff.lint]
+ignore = [
+    "E402",
+    "SIM117",
+    "A003",
+    "ANN001", "ANN201","ANN101", "ANN102", "ANN401", "ANN002", "ANN003", "ANN202", "ANN204", "ANN205", "ANN206",
+    "COM812",
+    "ARG005",
+    "S105",
+    "TRY003", "TRY201", "TRY301", "TRY300",
+    "S106",
+    "RET503", "RET505",
+    "FBT001", "FBT002", "FBT003",
+    "PIE800",
+    "PTH103", "PTH107", "PTH110", "PTH112", "PTH118", "PTH119", "PTH120","PTH123",
+    "S107"
+]
+select = [
+    # Pyflakes
+    "F",
+    # Pycodestyle
+    "E", "W",
+    # isort
+    "I",
+    # "COM" - The following rules may cause conflicts when used with the formatter: `COM812`.
+    # To avoid unexpected behavior, we recommend disabling these rules
+    "N", "UP", "YTT", "ANN",
+    "S", "BLE", "FBT", "B", "COM", "A", "C4",
+    "DTZ", "ICN", "PIE", "Q", "RET",
+    "SIM", "ARG", "PTH", "PLE", "TRY"
+]

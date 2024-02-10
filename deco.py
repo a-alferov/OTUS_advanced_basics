@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 from functools import wraps
 
 
-def disable():
+def disable(func):
     """
     Disable a decorator by re-assigning the decorator's name
     to this function. For example, to turn off memoization:
@@ -12,7 +11,11 @@ def disable():
     >>> memo = disable
     """
 
-    return
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 def decorator(func):
