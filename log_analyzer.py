@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 from argparse import ArgumentParser
 from collections import defaultdict
 from configparser import ConfigParser, SectionProxy
@@ -22,153 +21,6 @@ PreparatoryData: TypeAlias = dict[str, dict[str, int | list]]
 #                     '$request_time';
 
 LOG_FORMAT_PATTERN = r'".+? (.+?) .+?" .+ (\d+\.\d+)'
-TEMPLATE_STRING = """
-<!doctype html>
-
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>rbui log analysis report</title>
-    <meta name="description" content="rbui log analysis report">
-    <style type="text/css">
-        html, body {
-            background-color: black;
-        }
-
-        th {
-            text-align: center;
-            color: silver;
-            font-style: bold;
-            padding: 5px;
-            cursor: pointer;
-        }
-
-        table {
-            width: auto;
-            border-collapse: collapse;
-            margin: 1%;
-            color: silver;
-        }
-
-        td {
-            text-align: right;
-            font-size: 1.1em;
-            padding: 5px;
-        }
-
-        .report-table-body-cell-url {
-            text-align: left;
-            width: 20%;
-        }
-
-        .clipped {
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            overflow: hidden !important;
-            max-width: 700px;
-            word-wrap: break-word;
-            display: inline-block;
-        }
-
-        .url {
-            cursor: pointer;
-            color: #729FCF;
-        }
-
-        .alert {
-            color: red;
-        }
-    </style>
-</head>
-
-<body>
-<table border="1" class="report-table">
-    <thead>
-    <tr class="report-table-header-row">
-    </tr>
-    </thead>
-    <tbody class="report-table-body">
-    </tbody>
-
-    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-    <script type="text/javascript" src="jquery.tablesorter.min.js"></script>
-    <script type="text/javascript">
-        !function ($) {
-            var table = $table_json;
-            var reportDates;
-            var columns = new Array();
-            var lastRow = 150;
-            var $table = $(".report-table-body");
-            var $header = $(".report-table-header-row");
-            var $selector = $(".report-date-selector");
-
-            $(document).ready(function () {
-                $(window).bind("scroll", bindScroll);
-                var row = table[0];
-                for (k in row) {
-                    columns.push(k);
-                }
-                columns = columns.sort();
-                columns = columns.slice(
-                    columns.length - 1, columns.length).concat(columns.slice(0, columns.length - 1));
-                drawColumns();
-                drawRows(table.slice(0, lastRow));
-                $(".report-table").tablesorter();
-            });
-
-            function drawColumns() {
-                for (var i = 0; i < columns.length; i++) {
-                    var $th = $("<th></th>").text(columns[i])
-                        .addClass("report-table-header-cell")
-                    $header.append($th);
-                }
-            }
-
-            function drawRows(rows) {
-                for (var i = 0; i < rows.length; i++) {
-                    var row = rows[i];
-                    var $row = $("<tr></tr>").addClass("report-table-body-row");
-                    for (var j = 0; j < columns.length; j++) {
-                        var columnName = columns[j];
-                        var $cell = $("<td></td>").addClass("report-table-body-cell");
-                        if (columnName == "url") {
-                            var url = "https://rb.mail.ru" + row[columnName];
-                            var $link = $("<a></a>").attr("href", url)
-                                .attr("title", url)
-                                .attr("target", "_blank")
-                                .addClass("clipped")
-                                .addClass("url")
-                                .text(row[columnName]);
-                            $cell.addClass("report-table-body-cell-url");
-                            $cell.append($link);
-                        } else {
-                            $cell.text(row[columnName]);
-                            if (columnName == "time_avg" && row[columnName] > 0.9) {
-                                $cell.addClass("alert");
-                            }
-                        }
-                        $row.append($cell);
-                    }
-                    $table.append($row);
-                }
-                $(".report-table").trigger("update");
-            }
-
-            function bindScroll() {
-                if ($(window).scrollTop() == $(document).height() - $(window).height()) {
-                    if (lastRow < 1000) {
-                        drawRows(table.slice(lastRow, lastRow + 50));
-                        lastRow += 50;
-                    }
-                }
-            }
-
-        }(window.jQuery)
-    </script>
-</body>
-</html>
-"""
-REPORT_TEMPLATE = Template(template=TEMPLATE_STRING)
 FILENAME_PATTERN = r"(nginx-access-ui.log-)(\d{8})\.(gz|txt)"
 ERROR_RATE = 0.2
 NUMBER_OF_MISTAKES = 0
@@ -201,11 +53,8 @@ def get_last_sample(log_dir: Path) -> tuple[Path | None, datetime | None]:
 
 
 def get_lines(filename: Path) -> Generator[tuple[str, float], None, None]:
-    opener = open
+    opener = gzip.open if filename.suffix == ".gz" else open
     global NUMBER_OF_MISTAKES
-
-    if filename.suffix == ".gz":
-        opener = gzip.open
 
     with opener(filename, mode="rb") as f:
         for line in f.readlines():
@@ -257,10 +106,12 @@ def get_report_data(total_count: int, total_time: float, data: PreparatoryData) 
         }
 
 
-def prepare_report(data: Generator[dict, None, None], report_file: Path, report_size: int) -> None:
+def prepare_report(
+    data: Generator[dict, None, None], report_file: Path, report_size: int, report_template: Path
+) -> None:
     with report_file.open("w") as file:
         file.write(
-            REPORT_TEMPLATE.safe_substitute(
+            Template(template=report_template.read_text(encoding="UTF-8")).safe_substitute(
                 table_json=json.dumps(sorted(data, key=itemgetter("time_sum"), reverse=True)[:report_size])
             )
         )
@@ -295,7 +146,12 @@ def main(config: SectionProxy) -> None:
     logging.info(f"Error rate: {NUMBER_OF_MISTAKES / total_count if total_count != 0 else 0}")
 
     data = get_report_data(total_count=total_count, total_time=total_time, data=preparatory_data)
-    prepare_report(data=data, report_file=report_file, report_size=config.getint("REPORT_SIZE"))
+    prepare_report(
+        data=data,
+        report_file=report_file,
+        report_size=config.getint("REPORT_SIZE"),
+        report_template=Path(config.get("REPORT_TEMPLATE")),
+    )
 
 
 if __name__ == "__main__":
@@ -320,17 +176,21 @@ if __name__ == "__main__":
                     "REPORT_SIZE": 1000,
                     "REPORT_DIR": "./reports",
                     "LOG_DIR": "./log",
+                    "REPORT_TEMPLATE": "./report.html",
                 }
             }
         )
-
         config = config_parser["DEFAULT"]
         config_parser.read(config_file)
+
         logging.basicConfig(
             filename=config.get("LOG_FILE"), format="[%(asctime)s] %(levelname).1s %(message)s", level=logging.INFO
         )
 
-        main(config=config)
+        if Path(config.get("REPORT_TEMPLATE")).exists():
+            main(config=config)
+        else:
+            logging.error("No such report template file: 'report.html'")
 
     except Exception:
         logging.exception("Found an error")

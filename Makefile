@@ -8,3 +8,6 @@ lint:
 	poetry install --no-root
 	poetry run ruff check *.py
 	poetry run ruff format --check *.py
+
+tests:
+	python -m unittest tests_log_analyzer.py
